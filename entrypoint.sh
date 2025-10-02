@@ -1,10 +1,16 @@
 #!/bin/bash
 
-if [ ! -d "vendor" ]; then
+cd /var/www/html || exit 1
+
+if [ ! -f "vendor/autoload.php" ]; then
     echo "Installing dependencies..."
-    composer install --no-scripts --no-progress
+    composer install --no-scripts --no-progress --working-dir=/var/www/html
 else
-    echo "Vendor directory exists. Skipping composer install."
+    echo "Composer autoload exists. Skipping install."
+fi
+
+if [ -n "${WWWUSER}" ] && [ -n "${WWWGROUP}" ]; then
+    chown -R ${WWWUSER}:${WWWGROUP} /var/www/html 2>/dev/null || true
 fi
 
 if [ ! -f ".env" ]; then
@@ -34,28 +40,21 @@ SAIL_VERSION=v1.27.0
 EOF
     fi
 
-    # Генерируем ключ приложения
-    php artisan key:generate --ansi
+    php /var/www/html/artisan key:generate --ansi
 fi
 
 # Ждём, пока MySQL станет доступен
 echo "Waiting for MySQL to be ready..."
-until mysqladmin ping -h"mysql" -P3306 -u"${DB_USERNAME:-sail}" -p"${DB_PASSWORD:-password}" --silent; do
-    echo "MySQL is unavailable - sleeping"
-    sleep 5
-done
-echo "MySQL is ready!"
-
-# Выполняем миграции и сиды
-echo "Running migrations..."
-php artisan migrate --force
-
-echo "Running seeders..."
-php artisan db:seed --force
-
-echo "Generating Swagger documentation..."
-php artisan l5-swagger:generate
+if command -v mysqladmin >/dev/null 2>&1; then
+    until mysqladmin ping -h"mysql" -P3306 -u"${DB_USERNAME}" -p"${DB_PASSWORD}" --silent; do
+        echo "MySQL is unavailable - sleeping"
+        sleep 5
+    done
+    echo "MySQL is ready!"
+else
+    echo "mysqladmin not found, sleeping 15s as a fallback..."
+    sleep 15
+fi
 
 echo "Starting Laravel server..."
-# Запускаем Laravel
-exec php artisan serve --host=0.0.0.0 --port=80
+exec php /var/www/html/artisan serve --host=0.0.0.0 --port=80

@@ -1,13 +1,41 @@
 services:
+    setup:
+        build:
+            context: ./docker/laravel
+            dockerfile: Dockerfile
+        working_dir: /var/www/html
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+        environment:
+            COMPOSER_ALLOW_SUPERUSER: 1
+            COMPOSER_PROCESS_TIMEOUT: 2000
+        restart: "no"
+        command: >
+            bash -lc "
+                [ -f .env ] || cp .env.example .env;
+                if [ ! -d vendor ]; then
+                  for i in 1 2 3; do \
+                    composer install --no-dev --no-interaction --prefer-dist --ignore-platform-reqs && break || sleep 5; \
+                  done; \
+                fi; \
+                php artisan key:generate --force || true; \
+                php artisan migrate --force || true; \
+                php artisan db:seed --force || true; \
+                php artisan l5-swagger:generate || true; \
+                mysql -hmysql -uroot -p\"${DB_PASSWORD:-password}\" -e \"CREATE DATABASE IF NOT EXISTS testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\"; \
+                php artisan --env=testing migrate:fresh --seed --force || true; \
+            "
     laravel:
         build:
-            context: ./vendor/laravel/sail/runtimes/8.4
+            context: ./docker/laravel
             dockerfile: Dockerfile
-            args:
-                WWWUSER: '${WWWUSER}'
-                WWWGROUP: '${WWWGROUP}'
-                LARAVEL_SAIL_VERSION: '${SAIL_VERSION:-v1.27.0}'
-        image: sail-8.4/app:latest
+        user: "${WWWUSER}:${WWWGROUP}"
+        working_dir: /var/www/html
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -25,25 +53,11 @@ services:
         networks:
             - sail
         depends_on:
-            - mysql
+            setup:
+                condition: service_completed_successfully
+            mysql:
+                condition: service_healthy
         command: /entrypoint.sh
-
-#    migrator:
-#        image: sail-8.4/app
-#        volumes:
-#            - '.:/var/www/html'
-#        networks:
-#            - sail
-#        depends_on:
-#            - laravel
-#        restart: "no"
-#        command: >
-#          php -r 'file_exists(".env") || copy(".env.example", ".env");'
-#          && php artisan key:generate --ansi || true
-#          && sleep 10
-#          && php artisan migrate --force
-#          && php artisan db:seed --force
-#          && php artisan l5-swagger:generate
 
     mysql:
         image: 'mysql/mysql-server:8.0'
@@ -59,7 +73,6 @@ services:
             MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS}'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
-#            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
         networks:
             - sail
         healthcheck:
