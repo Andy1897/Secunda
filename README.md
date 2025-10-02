@@ -3,19 +3,14 @@
 REST API для справочника Организаций, Зданий и Видов деятельности.
 
 ### Запуск
-1) Требования: Docker Desktop.
-2) Сбилдить проект:
-   - './vendor/bin/sail build --no-cache'
-3) Поднять сервисы:
-   - `docker compose up -d`
-4) Применить миграции и сиды (один раз):
-   - `./vendor/bin/sail artisan migrate:fresh --seed`
+1)Поднять проект:
+    - `docker compose up -d`
 
 Приложение: `http://localhost`
 
 ### Аутентификация
 У всех запросов должен быть заголовок:
-- `X-API-Key: dev-secret-key` (или значение из `APP_API_KEY` в `.env`).
+- `X-API-Key: dev-secret-key`
 
 ### Swagger
 - UI: `http://localhost/api/documentation`
