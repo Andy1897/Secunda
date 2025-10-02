@@ -4,10 +4,14 @@ cd /var/www/html || exit 1
 
 if [ ! -f "vendor/autoload.php" ]; then
     echo "Installing dependencies..."
-    composer install --no-scripts --no-progress --working-dir=/var/www/html
+    composer install --no-progress --working-dir=/var/www/html || true
 else
     echo "Composer autoload exists. Skipping install."
 fi
+
+# Ensure Laravel auto-discovers packages and no stale config cache remains
+php /var/www/html/artisan package:discover --ansi || true
+php /var/www/html/artisan config:clear --ansi || true
 
 if [ -n "${WWWUSER}" ] && [ -n "${WWWGROUP}" ]; then
     chown -R ${WWWUSER}:${WWWGROUP} /var/www/html 2>/dev/null || true

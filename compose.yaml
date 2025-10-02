@@ -14,6 +14,10 @@ services:
         environment:
             COMPOSER_ALLOW_SUPERUSER: 1
             COMPOSER_PROCESS_TIMEOUT: 2000
+            DB_HOST: mysql
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
         restart: "no"
         command: >
             bash -lc "
@@ -27,8 +31,10 @@ services:
                 php artisan migrate --force || true; \
                 php artisan db:seed --force || true; \
                 php artisan l5-swagger:generate || true; \
-                mysql -hmysql -uroot -p\"${DB_PASSWORD:-password}\" -e \"CREATE DATABASE IF NOT EXISTS testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\"; \
+                mysql -hmysql -uroot -p\"${DB_PASSWORD}\" -e \"CREATE DATABASE IF NOT EXISTS testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\" || true; \
+                mysql -hmysql -uroot -p\"${DB_PASSWORD}\" -e \"GRANT ALL PRIVILEGES ON testing.* TO '${DB_USERNAME}'@'%'; FLUSH PRIVILEGES;\" || true; \
                 php artisan --env=testing migrate:fresh --seed --force || true; \
+                php artisan --env=testing migrate:status || true; \
             "
     laravel:
         build:
