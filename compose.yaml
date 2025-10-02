@@ -24,7 +24,7 @@ services:
                 [ -f .env ] || cp .env.example .env;
                 if [ ! -d vendor ]; then
                   for i in 1 2 3; do \
-                    composer install --no-dev --no-interaction --prefer-dist --ignore-platform-reqs && break || sleep 5; \
+                    composer install --no-interaction --prefer-dist --ignore-platform-reqs && break || sleep 5; \
                   done; \
                 fi; \
                 php artisan key:generate --force || true; \
