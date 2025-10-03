@@ -12,11 +12,7 @@ class ApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->artisan('migrate:fresh', ['--seed' => true]);
-    }
+    protected bool $seed = true;
 
     private function withKey(array $headers = []): array
     {
